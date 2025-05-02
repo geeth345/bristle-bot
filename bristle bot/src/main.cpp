@@ -6,91 +6,94 @@
 
 // ####### Constants and Variables #######
 const int NUM_BEACONS = 6;
-const char* BEACON_NAMES[] = {"Beacon1", "Beacon2", "Beacon3", "RasPi1", "RasPi2", "RasPi3"};
-const float BEACON_POSITIONS[][2] = {
-  {0.0, 1.5},    // Beacon1 position
-  {0.0, 0.0},    // Beacon2 position
-  {0.0, 3.0},    // Beacon3 position
-  {2.0, 3.0},    // Beacon4 position
-  {2.0, 1.5},    // Beacon5 position
-  {2.0, 0.0}     // Beacon6 position
+const char* BEACON_NAMES[] = {"Beacon1", "Beacon2", "Beacon3"};
+const float BEACON_POSITIONS[3][2] = {
+  {0.0, 1.0},     // Beacon1
+  {-0.75, 0.0},   // Beacon2
+  {0.75, 0.0}     // Beacon3
 };
 
 // RSSI calibration parameters
-const float RSSI_AT_1M = -53.99;      // Calibrated RSSI at 1 meter
-const float PATH_LOSS_EXPONENT = 3.25; // Path loss exponent
+const float RSSI_AT_1M = -65.37;      // Calibrated RSSI at 1 meter
+const float PATH_LOSS_EXPONENT = 2.68; // Path loss exponent
 
 // Output
 const int BLINK_MILLIS = 1000;
 const int CALC_MILLIS = 5000;
 
 // Store latest values
-float latest_rssi[NUM_BEACONS] = {-100.0, -100.0, -100.0, -100.0, -100.0, -100.0};
-float distances[NUM_BEACONS] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+float latest_rssi[NUM_BEACONS] = {-100.0, -100.0, -100.0};
+float distances[NUM_BEACONS] = {0.0, 0.0, 0.0};
+
+// RSSI smoothing variables
+const int windowSize = 7;
+int rssiBuffers[NUM_BEACONS][windowSize] = {0};
+int rssiIndexes[NUM_BEACONS] = {0};
+bool buffersFilled[NUM_BEACONS] = {false};
+
+// Position smoothing
+float ALPHA = 0.4;
+float smoothedX = NAN, smoothedY = NAN;
+
+
+// Last update times
+unsigned long lastUpdatedTimes[NUM_BEACONS] = {0};
+
 
 // ####### Function Definitions #######
 
-// Convert RSSI to distance using log-normal shadowing model
-float rssiToDistance(float rssi) {
-  return pow(10, (RSSI_AT_1M - rssi) / (10 * PATH_LOSS_EXPONENT));
+// // Convert RSSI to distance using log-normal shadowing model
+// float rssiToDistance(float rssi) {
+//   return pow(10, (RSSI_AT_1M - rssi) / (10 * PATH_LOSS_EXPONENT));
+// }
+
+void insertRSSI(int i, int rssi) {
+  rssiBuffers[i][rssiIndexes[i]] = rssi;
+  rssiIndexes[i] = (rssiIndexes[i] + 1) % windowSize;
+  if (rssiIndexes[i] == 0) buffersFilled[i] = true;
 }
 
-// Function to find position using multilateration with least-squares method
-void calculatePosition(float &x, float &y) {
-  // Calculate distances from RSSI values
-  for (int i = 0; i < NUM_BEACONS; i++) {
-    distances[i] = rssiToDistance(latest_rssi[i]);
-  }
-  
-  // Multilateration using least squares method
-  // For multiple beacons, we'll use the first beacon as reference and create a system of equations
-  
-  // Initialize matrices for least squares solution
-  // We'll have (NUM_BEACONS-1) equations with 2 unknowns (x,y)
-  float A[NUM_BEACONS-1][2];
-  float B[NUM_BEACONS-1];
-  
-  for (int i = 0; i < NUM_BEACONS-1; i++) {
-    // Set up equations based on differences of squared distances
-    // For each pair of beacons, we get an equation in the form:
-    // 2*(x_i+1 - x_i)*x + 2*(y_i+1 - y_i)*y = d_i^2 - d_i+1^2 - (x_i^2 - x_i+1^2) - (y_i^2 - y_i+1^2)
-    
-    float x_i = BEACON_POSITIONS[i][0];
-    float y_i = BEACON_POSITIONS[i][1];
-    float x_ip1 = BEACON_POSITIONS[i+1][0];
-    float y_ip1 = BEACON_POSITIONS[i+1][1];
-    
-    A[i][0] = 2 * (x_ip1 - x_i);
-    A[i][1] = 2 * (y_ip1 - y_i);
-    
-    B[i] = pow(distances[i], 2) - pow(distances[i+1], 2) - 
-           pow(x_i, 2) + pow(x_ip1, 2) - 
-           pow(y_i, 2) + pow(y_ip1, 2);
-  }
-  
-  // Use linear least squares to solve the overdetermined system
-  // Computing A^T * A and A^T * B
-  float ATA[2][2] = {{0, 0}, {0, 0}};
-  float ATB[2] = {0, 0};
-  
-  for (int i = 0; i < NUM_BEACONS-1; i++) {
-    for (int j = 0; j < 2; j++) {
-      for (int k = 0; k < 2; k++) {
-        ATA[j][k] += A[i][j] * A[i][k];
-      }
-      ATB[j] += A[i][j] * B[i];
+float avgRSSI(int i) {
+  int sum = 0;
+  int count = buffersFilled[i] ? windowSize : rssiIndexes[i];
+  if (count == 0) return -100.0;
+  for (int j = 0; j < count; j++) sum += rssiBuffers[i][j];
+  return float(sum) / count;
+}
+
+void trilateration(float d[3], float &x, float &y, float &residual) {
+  float weights[3];
+  for (int i = 0; i < 3; i++)
+    weights[i] = 1.0 / (d[i] * d[i] + 1e-6);
+
+  float x0 = 0.0, y0 = 0.3;  // Initial guess near center
+  for (int iter = 0; iter < 10; iter++) {
+    float gradX = 0.0, gradY = 0.0;
+    for (int i = 0; i < 3; i++) {
+      float dx = x0 - BEACON_POSITIONS[i][0];
+      float dy = y0 - BEACON_POSITIONS[i][1];
+      float ri = sqrt(dx * dx + dy * dy);
+      if (ri < 1e-6) ri = 1e-6;
+      float err = ri - d[i];
+      gradX += weights[i] * err * (dx / ri);
+      gradY += weights[i] * err * (dy / ri);
     }
+    x0 -= 0.1 * gradX;
+    y0 -= 0.1 * gradY;
   }
-  
-  // Solve the normal equations (ATA) * X = ATB
-  float det = ATA[0][0] * ATA[1][1] - ATA[0][1] * ATA[1][0];
-  if (abs(det) < 0.0001) {  // Check for zero determinant with small epsilon
-    Serial.println("No unique solution (matrix is singular)");
-    return;
+  x = x0;
+  y = y0;
+
+  // Compute residual
+  residual = 0.0;
+  for (int i = 0; i < 3; i++) {
+    float dx = x - BEACON_POSITIONS[i][0];
+    float dy = y - BEACON_POSITIONS[i][1];
+    float est = sqrt(dx * dx + dy * dy);
+    float err = est - d[i];
+    residual += err * err;
   }
-  
-  x = (ATB[0] * ATA[1][1] - ATB[1] * ATA[0][1]) / det;
-  y = (ATA[0][0] * ATB[1] - ATA[1][0] * ATB[0]) / det;
+  residual = sqrt(residual);
 }
 
 // Callback for when adv. packet is detected
@@ -130,9 +133,9 @@ void setup() {
     Serial.println("Starting BLE failed!");
     while (1) {
       digitalWrite(LED_BUILTIN, HIGH);
-      delay(100);
+      delay(50);
       digitalWrite(LED_BUILTIN, LOW);
-      delay(100);
+      delay(50);
     }
   }
   
@@ -142,44 +145,89 @@ void setup() {
   // Start continuous scanning
   Serial.println("Starting continuous scan mode...");
   BLE.scan(true);
+
+  // Locomotion setup
+  Serial.println("Initialising locomotion...");
+  initialiseLocomotion();
 }
 
-void loop() {
-  // Poll BLE events
-  BLE.poll();
-  
-  // Blink the LED
+void loop() {  
+  // ############ Blink the LED #############
   static unsigned long lastBlink = 0;
   if (millis() - lastBlink > BLINK_MILLIS) {
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     lastBlink = millis();
   }
+
+
+  // ############ Localisation #############
   
-  // Calculate position every 5 seconds
-  static unsigned long lastCalc = 0;
-  if (millis() - lastCalc > CALC_MILLIS) {
-    float x = 0, y = 0;
-    calculatePosition(x, y);
-    
-    Serial.print("Latest RSSI: ");
-    for (int i = 0; i < NUM_BEACONS; i++) {
-      Serial.print(BEACON_NAMES[i]);
-      Serial.print(": ");
-      Serial.print(latest_rssi[i]);
-      Serial.print(" dBm (");
-      Serial.print(rssiToDistance(latest_rssi[i]), 2);
-      Serial.print("m) ");
-    }
-    
-    Serial.print("| Estimated Position: (");
-    Serial.print(x, 2);
-    Serial.print(", ");
-    Serial.print(y, 2);
-    Serial.println(")");
-    
-    lastCalc = millis();
+  // restart the scan every 500ms
+  static unsigned long lastScanRestart = 0;
+  unsigned long now = millis();
+  if (now - lastScanRestart > 500) {
+    BLE.stopScan();
+    BLE.scan();
+    lastScanRestart = now;
   }
+
+  BLEDevice dev = BLE.available();
+  if (dev) {
+    String name = dev.localName();
+    for (int i = 0; i < NUM_BEACONS; i++) {
+      if (name == BEACON_NAMES[i]) {
+        insertRSSI(i, dev.rssi());
+        lastUpdatedTimes[i] = now;
+        break;
+      }
+    }
+  }
+
+  // Check if we have enough valid RSSI for all beacons
+  bool ready = true;
+  for (int i = 0; i < NUM_BEACONS; i++) {
+    if ((buffersFilled[i] ? windowSize : rssiIndexes[i]) == 0) {
+      ready = false;
+      break;
+    }
+  }
+  if (ready) {
+    // onvert RSSI to distance
+    float rssi[3], d[3];
+    for (int i = 0; i < 3; i++) {
+      rssi[i] = avgRSSI(i);
+      d[i] = pow(10.0, (RSSI_AT_1M - rssi[i]) / (10 * PATH_LOSS_EXPONENT));
+    }
   
-  //Locomotion control
-  //updateLocomotion();
+    // Trilateration + residual
+    float x, y, residual;
+    trilateration(d, x, y, residual);
+  
+    // Confidence estimation
+    float maxResidual = 1.5;
+    float confidence = max(0.0, min(1.0, 1.0 - residual / maxResidual));
+  
+    // Smoothing
+    if (isnan(smoothedX) || isnan(smoothedY)) {
+      smoothedX = x;
+      smoothedY = y;
+    } else {
+      smoothedX = ALPHA * x + (1 - ALPHA) * smoothedX;
+      smoothedY = ALPHA * y + (1 - ALPHA) * smoothedY;
+    }
+  
+    // Output only if confidence is sufficient
+    if (confidence >= 0.5) {
+      Serial.print("Position: (");
+      Serial.print(smoothedX, 2);
+      Serial.print(", ");
+      Serial.print(smoothedY, 2);
+      Serial.print(") | Confidence: ");
+      Serial.println(int(confidence * 100));
+    }
+  }
+
+  // ############ Locomotion #############
+  updateLocomotion();
+
 }
