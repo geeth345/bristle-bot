@@ -2,125 +2,184 @@
 #include <ArduinoBLE.h>
 #include <utility>
 #include <cmath>
+#include <Locomotion.h>
 
 // ####### Constants and Variables #######
-const int NUM_BEACONS = 3;
-const char* BEACON_NAMES[] = {"RasPi1", "RasPi2", "RasPi3"};
+const int NUM_BEACONS = 6;
+const char* BEACON_NAMES[] = {"Beacon1", "Beacon2", "Beacon3", "RasPi1", "RasPi2", "RasPi3"};
 const float BEACON_POSITIONS[][2] = {
-  {0.0, 0.0},	// RasPi1 position
-  {3.0, 0.0},	// RasPi2 position
-  {1.5, 2.5} 	// RasPi3 position
+  {0.0, 1.5},    // Beacon1 position
+  {0.0, 0.0},    // Beacon2 position
+  {0.0, 3.0},    // Beacon3 position
+  {2.0, 3.0},    // Beacon4 position
+  {2.0, 1.5},    // Beacon5 position
+  {2.0, 0.0}     // Beacon6 position
 };
 
 // RSSI calibration parameters
-const float RSSI_AT_1M = -65.0;  // Calibrated RSSI at 1 meter
-const float PATH_LOSS_EXPONENT = 2.8;  // Path loss exponent
+const float RSSI_AT_1M = -53.99;      // Calibrated RSSI at 1 meter
+const float PATH_LOSS_EXPONENT = 3.25; // Path loss exponent
 
 // Output
-const int BLINK_MILLIS = 1000; 
-const int CALC_MILLIS = 5000; 
+const int BLINK_MILLIS = 1000;
+const int CALC_MILLIS = 5000;
 
 // Store latest values
-float latest_rssi[NUM_BEACONS] = {-100.0, -100.0, -100.0};
-
+float latest_rssi[NUM_BEACONS] = {-100.0, -100.0, -100.0, -100.0, -100.0, -100.0};
+float distances[NUM_BEACONS] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
 // ####### Function Definitions #######
 
 // Convert RSSI to distance using log-normal shadowing model
 float rssiToDistance(float rssi) {
-    return pow(10, (RSSI_AT_1M - rssi) / (10 * PATH_LOSS_EXPONENT));
+  return pow(10, (RSSI_AT_1M - rssi) / (10 * PATH_LOSS_EXPONENT));
 }
 
-
-// Function to find position using least-squares trilateration
+// Function to find position using multilateration with least-squares method
 void calculatePosition(float &x, float &y) {
-    // temp variables for beacon positions
-    float x1 = BEACON_POSITIONS[0][0], y1 = BEACON_POSITIONS[0][1];
-    float x2 = BEACON_POSITIONS[1][0], y2 = BEACON_POSITIONS[1][1];
-    float x3 = BEACON_POSITIONS[2][0], y3 = BEACON_POSITIONS[2][1];
-  
-    // Initialize variables
-    float A[2][2] = {{2 * (x2 - x1), 2 * (y2 - y1)},
-                     {2 * (x3 - x2), 2 * (y3 - y2)}};
-    float B[2] = {pow(latest_rssi[0], 2) - pow(latest_rssi[1], 2) - pow(x1, 2) + pow(x2, 2) - pow(y1, 2) + pow(y2, 2),
-                  pow(latest_rssi[1], 2) - pow(latest_rssi[2], 2) - pow(x2, 2) + pow(x3, 2) - pow(y2, 2) + pow(y3, 2)};
-  
-    // Solve the system of equations: A * X = B
-    float det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
-    if (det == 0) {
-      Serial.println("No unique solution (beacons are collinear)"); // TODO: better error handling?
-      return;
-    }
-  
-    x = (B[0] * A[1][1] - B[1] * A[0][1]) / det;
-    y = (A[0][0] * B[1] - A[1][0] * B[0]) / det;
+  // Calculate distances from RSSI values
+  for (int i = 0; i < NUM_BEACONS; i++) {
+    distances[i] = rssiToDistance(latest_rssi[i]);
   }
-
-
+  
+  // Multilateration using least squares method
+  // For multiple beacons, we'll use the first beacon as reference and create a system of equations
+  
+  // Initialize matrices for least squares solution
+  // We'll have (NUM_BEACONS-1) equations with 2 unknowns (x,y)
+  float A[NUM_BEACONS-1][2];
+  float B[NUM_BEACONS-1];
+  
+  for (int i = 0; i < NUM_BEACONS-1; i++) {
+    // Set up equations based on differences of squared distances
+    // For each pair of beacons, we get an equation in the form:
+    // 2*(x_i+1 - x_i)*x + 2*(y_i+1 - y_i)*y = d_i^2 - d_i+1^2 - (x_i^2 - x_i+1^2) - (y_i^2 - y_i+1^2)
+    
+    float x_i = BEACON_POSITIONS[i][0];
+    float y_i = BEACON_POSITIONS[i][1];
+    float x_ip1 = BEACON_POSITIONS[i+1][0];
+    float y_ip1 = BEACON_POSITIONS[i+1][1];
+    
+    A[i][0] = 2 * (x_ip1 - x_i);
+    A[i][1] = 2 * (y_ip1 - y_i);
+    
+    B[i] = pow(distances[i], 2) - pow(distances[i+1], 2) - 
+           pow(x_i, 2) + pow(x_ip1, 2) - 
+           pow(y_i, 2) + pow(y_ip1, 2);
+  }
+  
+  // Use linear least squares to solve the overdetermined system
+  // Computing A^T * A and A^T * B
+  float ATA[2][2] = {{0, 0}, {0, 0}};
+  float ATB[2] = {0, 0};
+  
+  for (int i = 0; i < NUM_BEACONS-1; i++) {
+    for (int j = 0; j < 2; j++) {
+      for (int k = 0; k < 2; k++) {
+        ATA[j][k] += A[i][j] * A[i][k];
+      }
+      ATB[j] += A[i][j] * B[i];
+    }
+  }
+  
+  // Solve the normal equations (ATA) * X = ATB
+  float det = ATA[0][0] * ATA[1][1] - ATA[0][1] * ATA[1][0];
+  if (abs(det) < 0.0001) {  // Check for zero determinant with small epsilon
+    Serial.println("No unique solution (matrix is singular)");
+    return;
+  }
+  
+  x = (ATB[0] * ATA[1][1] - ATB[1] * ATA[0][1]) / det;
+  y = (ATA[0][0] * ATB[1] - ATA[1][0] * ATB[0]) / det;
+}
 
 // Callback for when adv. packet is detected
 void deviceDiscoveredCallback(BLEDevice peripheral) {
-    for (int i = 0; i < NUM_BEACONS; i++) {
-        const char* name = BEACON_NAMES[i];
-	if (peripheral.hasLocalName() &&
-         strcmp(peripheral.localName().c_str(), name) == 0) {
-  	    latest_rssi[i] = peripheral.rssi();
-  	    break;
-        }
+  for (int i = 0; i < NUM_BEACONS; i++) {
+    const char* name = BEACON_NAMES[i];
+    if (peripheral.hasLocalName() && 
+        strcmp(peripheral.localName().c_str(), name) == 0) {
+      latest_rssi[i] = peripheral.rssi();
+    //   Serial.print("Discovered ");
+    //   Serial.print(name);
+    //   Serial.print(" with RSSI: ");
+    //   Serial.println(latest_rssi[i]);
+      break;
     }
+  }
 }
 
 void setup() {
-    Serial.begin(9600);
-    delay(1000);
- 
-    pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, LOW);
- 
-    Serial.println("BLE RSSI tracker starting...");
- 
-    if (!BLE.begin()) {
-            Serial.println("Starting BLE failed!");
-            while (1) {
-  	    digitalWrite(LED_BUILTIN, HIGH);
-  	    delay(100);
-  	    digitalWrite(LED_BUILTIN, LOW);
-  	    delay(100);
-        }
+  Serial.begin(9600);
+  
+  // Wait for serial monitor with timeout (5 seconds)
+  unsigned long startTime = millis();
+  while (!Serial && (millis() - startTime < 5000)) {
+    delay(10);
+  }
+  
+  // LED setup
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
+  // locomotion setup
+  // initialiseLocomotion();
+  
+  Serial.println("BLE RSSI tracker starting with 6 beacons...");
+  
+  if (!BLE.begin()) {
+    Serial.println("Starting BLE failed!");
+    while (1) {
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(100);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(100);
     }
- 
-    BLE.setEventHandler(BLEDiscovered, deviceDiscoveredCallback);
- 
-    // continuous scanning
-    Serial.println("Starting continuous scan mode...");
-    BLE.scan(true);
-
+  }
+  
+  // Set the event handler for discovered devices
+  BLE.setEventHandler(BLEDiscovered, deviceDiscoveredCallback);
+  
+  // Start continuous scanning
+  Serial.println("Starting continuous scan mode...");
+  BLE.scan(true);
 }
 
 void loop() {
-    // poll instead of scan in the loop
-    BLE.poll();
- 
-    // blink the LED
-    static unsigned long lastBlink = 0;
-    if (millis() - lastBlink > BLINK_MILLIS) {
-        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-        lastBlink = millis();
+  // Poll BLE events
+  BLE.poll();
+  
+  // Blink the LED
+  static unsigned long lastBlink = 0;
+  if (millis() - lastBlink > BLINK_MILLIS) {
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    lastBlink = millis();
+  }
+  
+  // Calculate position every 5 seconds
+  static unsigned long lastCalc = 0;
+  if (millis() - lastCalc > CALC_MILLIS) {
+    float x = 0, y = 0;
+    calculatePosition(x, y);
+    
+    Serial.print("Latest RSSI: ");
+    for (int i = 0; i < NUM_BEACONS; i++) {
+      Serial.print(BEACON_NAMES[i]);
+      Serial.print(": ");
+      Serial.print(latest_rssi[i]);
+      Serial.print(" dBm (");
+      Serial.print(rssiToDistance(latest_rssi[i]), 2);
+      Serial.print("m) ");
     }
-    // calculate position every 5 seconds
-    static unsigned long lastCalc = 0;
-    if (millis() - lastCalc > CALC_MILLIS) {
-        float x, y;
-        calculatePosition(x, y);
-        Serial.print("Estimated Position: (");
-        Serial.print(x);
-        Serial.print(", ");
-        Serial.print(y);
-        Serial.println(")");
-        lastCalc = millis();
-    }
-
+    
+    Serial.print("| Estimated Position: (");
+    Serial.print(x, 2);
+    Serial.print(", ");
+    Serial.print(y, 2);
+    Serial.println(")");
+    
+    lastCalc = millis();
+  }
+  
+  //Locomotion control
+  //updateLocomotion();
 }
-
-
-
