@@ -16,15 +16,17 @@ const int BLINK_MILLIS = 1000;
 // }
 
 
-void setup() {
+void setup()
+{
   Serial.begin(9600);
-  
-  // Wait for serial monitor with timeout (10 seconds)
+
+  // Wait for serial monitor with timeout (5 seconds)
   unsigned long startTime = millis();
-  while (!Serial && (millis() - startTime < 10000)) {
+  while (!Serial && (millis() - startTime < 5000))
+  {
     delay(10);
   }
-  
+
   // LED setup
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
@@ -45,24 +47,43 @@ void setup() {
 
 }
 
-void loop() {  
-  Serial.print("#");
-  static unsigned long lastBlink = 0;
-
+void loop()
+{
   // ############ Blink the LED #############
-  if (millis() - lastBlink > BLINK_MILLIS) {
+  static unsigned long lastBlink = 0;
+  if (millis() - lastBlink > BLINK_MILLIS)
+  {
     Serial.println("Blink!");
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     lastBlink = millis();
   }
+
+  // ############ Communication ############
+#if Do_Communication
+
+  static unsigned long lastSwap = 0;
+  static bool advertising = false;
+  if (millis() - lastSwap > BLE_SWAP_MILLIS)
+  {
+    if (advertising)
+    {
+      stopAdvertiseBLE();
+      advertising = false;
+    }
+    else
+    {
+      advertiseBLE();
+      advertising = true;
+    }
+    lastSwap = millis();
+  }
+
+#endif // Do_Communication
 
   // ############ Localisation #############
   updateLocalisation();
 
 
   // ############ Locomotion #############
-  // updateLocomotion();
-
-  delay(400);
-
+  updateLocomotion();
 }
