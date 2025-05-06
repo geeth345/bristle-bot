@@ -1,6 +1,11 @@
 #pragma once
 
-void setupBLE();
-void swapClientServer();
+namespace BLEManager
+{
 
-bool isScanning();
+    void setupBLE();
+    void swapClientServer();
+
+    bool isScanning();
+
+}

@@ -5,79 +5,84 @@
 
 #include <vector>
 
-static volatile uint8_t pos_x;
-static volatile uint8_t pos_y;
-static volatile uint8_t battery_level;
-static volatile uint8_t sound_level;
-
-static const char *LOCAL_NAME = "BristleBot";
-
-std::vector<uint8_t> create_manuf_data_packet()
-{
-    std::vector<uint8_t> out = std::vector<uint8_t>(6);
-    out[0] = 0xFF;
-    out[1] = 0xFF;
-    out[2] = pos_x;
-    out[3] = pos_y;
-    out[4] = battery_level;
-    out[5] = sound_level;
-    return out;
-}
-
-BLEAdvertisingData set_manuf_data()
-{
-    BLEAdvertisingData packet;
-    std::vector<uint8_t> data = create_manuf_data_packet();
-    packet.setLocalName(LOCAL_NAME);
-    packet.setManufacturerData(data.data(), data.size());
-    return packet;
-}
-
-void setupCommunication()
+namespace Comms
 {
 
-    pos_x = 0;
-    pos_y = 0;
-    battery_level = 255;
-    sound_level = 0;
-}
+    static volatile uint8_t pos_x;
+    static volatile uint8_t pos_y;
+    static volatile uint8_t battery_level;
+    static volatile uint8_t sound_level;
 
-void advertiseBLE()
-{
-    Serial.println("Advertising BLE...");
-    pos_x++;
+    static const char *LOCAL_NAME = "BristleBot";
 
-    // Create a custom advertisement packet
-
-    BLEAdvertisingData data = set_manuf_data();
-    BLE.setAdvertisingData(data);
-
-    if (!BLE.advertise())
+    std::vector<uint8_t> create_manuf_data_packet()
     {
-        Serial.println("Error Setting advertisement");
+        std::vector<uint8_t> out = std::vector<uint8_t>(6);
+        out[0] = 0xFF;
+        out[1] = 0xFF;
+        out[2] = pos_x;
+        out[3] = pos_y;
+        out[4] = battery_level;
+        out[5] = sound_level;
+        return out;
     }
-}
 
-void update_position(uint8_t x, uint8_t y)
-{
-    pos_x = x;
-    pos_y = y;
-}
+    BLEAdvertisingData set_manuf_data()
+    {
+        BLEAdvertisingData packet;
+        std::vector<uint8_t> data = create_manuf_data_packet();
+        packet.setLocalName(LOCAL_NAME);
+        packet.setManufacturerData(data.data(), data.size());
+        return packet;
+    }
 
-void update_battery_level(uint8_t level)
-{
-    battery_level = level;
-}
+    void setupCommunication()
+    {
 
-void update_sound(uint8_t level)
-{
-    sound_level = level;
-}
+        pos_x = 0;
+        pos_y = 0;
+        battery_level = 255;
+        sound_level = 0;
+    }
 
-void stopAdvertiseBLE()
-{
+    void advertiseBLE()
+    {
+        Serial.println("Advertising BLE...");
+        pos_x++;
 
-    Serial.println("End Advertising...");
+        // Create a custom advertisement packet
 
-    BLE.stopAdvertise();
+        BLEAdvertisingData data = set_manuf_data();
+        BLE.setAdvertisingData(data);
+
+        if (!BLE.advertise())
+        {
+            Serial.println("Error Setting advertisement");
+        }
+    }
+
+    void update_position(uint8_t x, uint8_t y)
+    {
+        pos_x = x;
+        pos_y = y;
+    }
+
+    void update_battery_level(uint8_t level)
+    {
+        battery_level = level;
+    }
+
+    void update_sound(uint8_t level)
+    {
+        sound_level = level;
+    }
+
+    void stopAdvertiseBLE()
+    {
+
+        Serial.println("End Advertising...");
+
+        BLE.stopAdvertise();
+    }
+
 }

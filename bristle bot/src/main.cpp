@@ -34,7 +34,7 @@ void setup()
   }
 
   // Initialise localisation
-  setupBLE();
+  BLEManager::setupBLE();
   initialiseLocalisation();
 }
 
@@ -50,9 +50,9 @@ void loop()
     lastBlink = millis();
   }
 
-  swapClientServer();
+  BLEManager::swapClientServer();
 
-  if (isScanning())
+  if (BLEManager::isScanning())
   {
     updateLocalisation();
   }
