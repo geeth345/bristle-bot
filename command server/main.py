@@ -6,12 +6,14 @@ import typing
 
 from loguru import logger
 
-bot_disconnect_timeout = 5
-bot_remove_timeout = 300 #NYI
+bot_disconnect_timeout = 10
+bot_remove_timeout = 60
+
+company_ids = {}
 
 class Bot:
-    def __init__(self, bot_id, bluetooth_mac):
-        logger.info(f"Creating new Bot entry: id:{{{bot_id}}}")
+    def __init__(self, bot_id, bluetooth_mac, name, rssi, manuf_data):
+        # logger.info(f"Creating new Bot entry: id:{{{bot_id}}} name: {{{name}}} rssi: {{{rssi}}} manf: {{{manuf_data}}}")
         self.id = bot_id
         self.bluetooth_mac = bluetooth_mac
         self.last_seen = time.time()
@@ -28,8 +30,11 @@ async def scan_loop():
         logger.info(f"Found Device: {{{ble_id}}}")
         logger.info("{}", adv_data.manufacturer_data)
         # Decode data into the Bot
-        if (bot_registry[bot_id] == None):
-            bot_registry[bot_id] = Bot(bot_id, ble_id)
+        if (bot_id not in bot_registry.keys()):
+            bot_registry[bot_id] = Bot(bot_id, ble_id, adv_data.local_name, adv_data.rssi, adv_data.manufacturer_data)
+        else:
+            bot_registry[bot_id].refresh_data(adv_data.rssi, adv_data.manufacturer_data)
+            # logger.debug("refresh: {} {}", bot_id, bot_registry[bot_id])
     
     scanner = bleak.BleakScanner(detection_callback)
     await scanner.start()
