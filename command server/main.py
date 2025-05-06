@@ -31,7 +31,7 @@ async def scan_loop():
     async def detection_callback(device: bleak.BLEDevice, adv_data: bleak.AdvertisementData):
         ble_id = device.address
         bot_id = device.address
-        logger.debug(f"Found Device: {{{ble_id}}} {device.metadata} {adv_data}")
+        #logger.debug(f"Found Device: {{{ble_id}}} {device.metadata} {adv_data}")
         #logger.debug("{}", adv_data.manufacturer_data)
         #if (adv_data.rssi > -50):
         #    return
@@ -79,6 +79,11 @@ async def timeout_loop():
             else:
                 count += 1
         logger.info("Known connected devices: {}/{}", count, len(bot_registry))
+        for bot in bot_registry.values():
+            if bot.status["connected"]:
+                logger.info("Device: {}", bot)
+            else:
+                logger.warning("Device: {}", bot)
         await asyncio.sleep(1)
 
 async def main():
