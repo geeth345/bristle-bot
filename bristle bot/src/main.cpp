@@ -5,7 +5,7 @@
 #include <Locomotion.h>
 #include <Localisation.h>
 #include "Communication.h"
-
+#include "BluetoothManager.h"
 
 const int BLINK_MILLIS = 1000;
 
@@ -25,7 +25,8 @@ void setup()
   digitalWrite(LED_BUILTIN, LOW);
 
   // do a blink
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++)
+  {
     digitalWrite(LED_BUILTIN, HIGH);
     delay(100);
     digitalWrite(LED_BUILTIN, LOW);
@@ -33,12 +34,13 @@ void setup()
   }
 
   // Initialise localisation
+  setupBLE();
   initialiseLocalisation();
-
 }
 
 void loop()
 {
+  // Serial.write('#');
   // ############ Blink the LED #############
   static unsigned long lastBlink = 0;
   if (millis() - lastBlink > BLINK_MILLIS)
@@ -48,31 +50,12 @@ void loop()
     lastBlink = millis();
   }
 
-  // ############ Communication ############
-#if Do_Communication
+  swapClientServer();
 
-  static unsigned long lastSwap = 0;
-  static bool advertising = false;
-  if (millis() - lastSwap > BLE_SWAP_MILLIS)
+  if (isScanning())
   {
-    if (advertising)
-    {
-      stopAdvertiseBLE();
-      advertising = false;
-    }
-    else
-    {
-      advertiseBLE();
-      advertising = true;
-    }
-    lastSwap = millis();
+    updateLocalisation();
   }
-
-#endif // Do_Communication
-
-  // ############ Localisation #############
-  updateLocalisation();
-
 
   // ############ Locomotion #############
   updateLocomotion();

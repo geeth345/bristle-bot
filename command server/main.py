@@ -44,16 +44,19 @@ async def scan_loop():
         
         manuf_name = adv_data.manufacturer_data
         # ignore Apple
-        try: 
-            key = list(manuf_name.keys())[0]
-            if (key == 76):
-                return
-            manuf_name = company_ids[key]
-        except:
-            pass
+        # try: 
+        #     key = list(manuf_name.keys())[0]
+        #     if (key == 76):
+        #         return
+        #     manuf_name = company_ids[key]
+        # except:
+        #     pass
         
+        # if adv_data.local_name != None:
+        #     logger.debug(adv_data.local_name)
         if adv_data.local_name != "BristleBot":
             return
+        # logger.warning("Found!")
 
         # Decode data into the Bot
         if (bot_id not in bot_registry.keys()):

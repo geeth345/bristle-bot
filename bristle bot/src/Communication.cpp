@@ -5,11 +5,12 @@
 
 #include <vector>
 
-static BLEAdvertisingData advData;
 static volatile uint8_t pos_x;
 static volatile uint8_t pos_y;
 static volatile uint8_t battery_level;
 static volatile uint8_t sound_level;
+
+static const char *LOCAL_NAME = "BristleBot";
 
 std::vector<uint8_t> create_manuf_data_packet()
 {
@@ -23,10 +24,13 @@ std::vector<uint8_t> create_manuf_data_packet()
     return out;
 }
 
-void set_manuf_data()
+BLEAdvertisingData set_manuf_data()
 {
+    BLEAdvertisingData packet;
     std::vector<uint8_t> data = create_manuf_data_packet();
-    advData.setManufacturerData(data.data(), data.size());
+    packet.setLocalName(LOCAL_NAME);
+    packet.setManufacturerData(data.data(), data.size());
+    return packet;
 }
 
 void setupCommunication()
@@ -36,9 +40,6 @@ void setupCommunication()
     pos_y = 0;
     battery_level = 255;
     sound_level = 0;
-
-    advData.setLocalName("BristleBot"); // <-- This line is important
-    set_manuf_data();
 }
 
 void advertiseBLE()
@@ -48,8 +49,8 @@ void advertiseBLE()
 
     // Create a custom advertisement packet
 
-    set_manuf_data();
-    BLE.setAdvertisingData(advData);
+    BLEAdvertisingData data = set_manuf_data();
+    BLE.setAdvertisingData(data);
 
     if (!BLE.advertise())
     {
