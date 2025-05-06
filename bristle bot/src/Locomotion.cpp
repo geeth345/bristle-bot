@@ -17,10 +17,18 @@ void initialiseLocomotion() {
   pinMode(motorRight, OUTPUT);
   pinMode(motorLeft, OUTPUT);
 
-  Serial.begin(115200);  //initialise serial port for debugging
+  // Serial.begin(115200);  //initialise serial port for debugging
   //initialize walk timing to some random interval between min/max, set timer
   interval = random(minWalkTime, maxWalkTime);
   previousMillis = millis();
+  // spin motors for a short time to test
+  digitalWrite(motorRight, HIGH);
+  delay(1000);
+  digitalWrite(motorRight, LOW);
+  digitalWrite(motorLeft, HIGH);
+  delay(1000);
+  digitalWrite(motorLeft, LOW);
+
 }
 
 void updateLocomotion() {
