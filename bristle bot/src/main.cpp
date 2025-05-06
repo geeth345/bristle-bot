@@ -4,17 +4,10 @@
 #include <cmath>
 #include <Locomotion.h>
 #include <Localisation.h>
+#include "Communication.h"
 
 
 const int BLINK_MILLIS = 1000;
-
-// ####### Function Definitions #######
-
-// // Convert RSSI to distance using log-normal shadowing model
-// float rssiToDistance(float rssi) {
-//   return pow(10, (RSSI_AT_1M - rssi) / (10 * PATH_LOSS_EXPONENT));
-// }
-
 
 void setup()
 {
@@ -41,9 +34,6 @@ void setup()
 
   // Initialise localisation
   initialiseLocalisation();
-
-  // Initialise locomotion
-  // initialiseLocomotion();
 
 }
 
