@@ -7,21 +7,27 @@ import bleak
 from loguru import logger
 
 bot_disconnect_timeout = 5
-bot_remove_timeout = 300 #NYI
+bot_remove_timeout = 30
 
 company_ids = {}
 
 class Bot:
-    def __init__(self, bot_id, bluetooth_mac, name, rssi, manuf):
-        logger.info(f"Creating new Bot entry: id:{{{bot_id}}} name: {{{name}}} rssi: {{{rssi}}} manf: {{{manuf}}}")
+    def __init__(self, bot_id, bluetooth_mac, name, rssi, manuf_data):
+        logger.info(f"Creating new Bot entry: id:{{{bot_id}}} name: {{{name}}} rssi: {{{rssi}}} manf: {{{manuf_data}}}")
         self.id = bot_id
         self.bluetooth_mac = bluetooth_mac
         self.last_seen = time.time()
-        self.status = {"connected" : True, "rssi" : rssi, "manuf" : manuf}
+        self.status = {"connected" : True, "rssi" : rssi, "manuf_data" : manuf_data}
         self.name = name
     
+    def refresh_data(self, rssi, manuf_data):
+        self.status["connected"] = True
+        self.last_seen = time.time()
+        self.status["rssi"] = rssi
+        self.status["manuf_data"] = manuf_data
+    
     def __str__(self):
-        return f"{{{self.name}  id:{{{self.id}}} rssi: {{{self.status["rssi"]}}} manuf: {{{self.status["manuf"]}}}}}"
+        return f"{{{self.name}  id:{{{self.id}}} rssi: {{{self.status["rssi"]}}} manuf_name: {{{self.status["manuf_data"]}}}}}"
 
 bot_registry: dict[str, Bot] = {}
 
@@ -36,25 +42,25 @@ async def scan_loop():
         #if (adv_data.rssi > -50):
         #    return
         
-        manuf = adv_data.manufacturer_data
+        manuf_name = adv_data.manufacturer_data
         # ignore Apple
         try: 
-            key = list(manuf.keys())[0]
+            key = list(manuf_name.keys())[0]
             if (key == 76):
                 return
-            manuf = company_ids[key]
+            manuf_name = company_ids[key]
         except:
-            pass#logger.warning(manuf)
+            pass
         
+        if adv_data.local_name != "BristleBot":
+            return
+
         # Decode data into the Bot
         if (bot_id not in bot_registry.keys()):
-            
-            bot_registry[bot_id] = Bot(bot_id, ble_id, adv_data.local_name, adv_data.rssi, manuf)
+            bot_registry[bot_id] = Bot(bot_id, ble_id, adv_data.local_name, adv_data.rssi, adv_data.manufacturer_data)
         else:
-            bot_registry[bot_id].last_seen = time.time()
-            bot_registry[bot_id].status["connected"] = True
-            bot_registry[bot_id].status["rssi"] = adv_data.rssi
-            #logger.debug("{}, {}", bot_registry[bot_id], manuf)
+            bot_registry[bot_id].refresh_data(adv_data.rssi, adv_data.manufacturer_data)
+            logger.debug("refresh: {} {}", bot_id, bot_registry[bot_id])
     
     scanner = bleak.BleakScanner(detection_callback)
     await scanner.start()
@@ -79,11 +85,24 @@ async def timeout_loop():
             else:
                 count += 1
         logger.info("Known connected devices: {}/{}", count, len(bot_registry))
+        # for bot in bot_registry.values():
+        #     if bot.status["connected"]:
+        #         logger.info("Device: {}", bot)
+        #     else:
+        #         logger.warning("Device: {}", bot)
+        await asyncio.sleep(1)
+
+async def cleanup():
+    logger.debug("Start Cleanup Loop")
+    while True:
+        now = time.time()
+        delete_queue = []
         for bot in bot_registry.values():
-            if bot.status["connected"]:
-                logger.info("Device: {}", bot)
-            else:
-                logger.warning("Device: {}", bot)
+            if (bot.last_seen + bot_remove_timeout < now):
+                #logger.warning(f"Bot {{{bot.id}}} not seen for more than {bot_remove_timeout} seconds.")
+                delete_queue.append(bot.id)
+        for to_delete in delete_queue:
+            bot_registry.pop(to_delete)
         await asyncio.sleep(1)
 
 async def main():
@@ -92,7 +111,7 @@ async def main():
     for d in indata:
         company_ids[d["value"]] = d["name"]
     #logger.debug(company_ids)
-    await asyncio.gather(scan_loop(), timeout_loop())
+    await asyncio.gather(scan_loop(), timeout_loop(), cleanup())
 
 if __name__ == "__main__":
     asyncio.run(main())
