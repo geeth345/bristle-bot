@@ -1,0 +1,6 @@
+31 bytes
+
+x position: 1 bytes
+y position: 1 bytes
+battery level: 1 bytes
+sound level: 4 bytes
