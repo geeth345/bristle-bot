@@ -8,10 +8,10 @@
 namespace Comms
 {
 
-    static volatile uint8_t pos_x;
-    static volatile uint8_t pos_y;
-    static volatile uint8_t battery_level;
-    static volatile uint8_t sound_level;
+    static uint8_t pos_x;
+    static uint8_t pos_y;
+    static uint8_t battery_level;
+    static uint8_t sound_level;
 
     static const char *LOCAL_NAME = "BristleBot";
 
