@@ -141,6 +141,14 @@ void setup() {
   
   // Set the event handler for discovered devices
   BLE.setEventHandler(BLEDiscovered, deviceDiscoveredCallback);
+
+  // Set BLE name
+  BLE.setLocalName("BeetleBot");
+  BLE.setDeviceName("BeetleBot");
+  BLE.advertise();
+
+  static byte data[6] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
+  BLE.setManufacturerData(data, 6);
   
   // Start continuous scanning
   Serial.println("Starting continuous scan mode...");
