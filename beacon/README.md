@@ -1,8 +1,8 @@
-Beacon setup procedure
+Beacon Setup Procedure
 
 1) Setup each Raspberry Pi with Raspbian OS, boot and open a terminal. (Easiest way is to specify WiFi details, and enabling SSH when creating the disk image, and accessing through SSH)
 
-2) Create a Python file using nano or vi, with the code in setup.py.
+2) Create a Python file using nano or vi, with the code in setup.py. Desktop users can do this in a regular text editor. 
 
 3) Now similararly create a systemd service file to setup the script to run at startup. 
 ```

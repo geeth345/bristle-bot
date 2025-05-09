@@ -4,9 +4,11 @@
 #include <cmath>
 #include <Locomotion.h>
 #include <Localisation.h>
-#include "Communication.h"
-#include "BluetoothManager.h"
-#include "SoundMeasurer.h"
+#include <Communication.h>
+#include <BluetoothManager.h>
+#include <SoundMeasurer.h>
+#include <orientation/Orientation.h>
+
 
 
 const int BLINK_MILLIS = 1000;
@@ -45,6 +47,11 @@ void setup()
   // initialise sound level
   setupSoundLevel();
 
+  // initialise orientation
+  // this will trigger a 5 second orientation phase where the user will need
+  // to rotate the robot in all directions
+  setupOrientation();
+
 }
 
 void loop()
@@ -65,6 +72,9 @@ void loop()
   {
     updateLocalisation();
   }
+
+  // ############ Orientation #############
+  updateOrientation();
 
   // ############ Sound Level #############
   updateSoundLevel();
