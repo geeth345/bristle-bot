@@ -6,6 +6,8 @@
 #include <Localisation.h>
 #include "Communication.h"
 #include "BluetoothManager.h"
+#include "SoundMeasurer.h"
+
 
 const int BLINK_MILLIS = 1000;
 
@@ -36,11 +38,15 @@ void setup()
   // Initialise localisation
   BLEManager::setupBLE();
   initialiseLocalisation();
+
+  // initialise sound level
+  setupSoundLevel();
+
 }
 
 void loop()
 {
-  // Serial.write('#');
+  // Serial.write('#'); <PDM.h>
   // ############ Blink the LED #############
   static unsigned long lastBlink = 0;
   if (millis() - lastBlink > BLINK_MILLIS)
@@ -57,6 +63,10 @@ void loop()
     updateLocalisation();
   }
 
+  // ############ Sound Level #############
+  updateSoundLevel();
+
   // ############ Locomotion #############
   updateLocomotion();
 }
+

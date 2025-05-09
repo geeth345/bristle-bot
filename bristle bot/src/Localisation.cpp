@@ -2,6 +2,8 @@
 #include <ArduinoBLE.h>
 
 // ####### Constants and Variables #######
+const bool CALLBACK_SCANNING_MODE = true; // true = scan with the callback, false = scan with BLE.available()
+
 const int NUM_BEACONS = 3;
 const char *BEACON_NAMES[] = {"RasPi1", "RasPi2", "RasPi3"};
 const float BEACON_POSITIONS[3][2] = {
@@ -120,48 +122,55 @@ void initialiseLocalisation()
 {
 
   // Set the event handler for discovered devices
-  BLE.setEventHandler(BLEDiscovered, deviceDiscoveredCallback);
+  if (CALLBACK_SCANNING_MODE) {
+    BLE.setEventHandler(BLEDiscovered, deviceDiscoveredCallback);
+  }
 }
 
 void updateLocalisation()
 {
   // Serial.println("Update localisation called...");
-  BLE.poll(); // Poll for BLE events
-  // Serial.println("Polling done...");
+  if (CALLBACK_SCANNING_MODE) {
+    BLE.poll();
+    // Serial.println("Polling done...");
 
-  // restart the scan every 500ms
-  //  Serial.println("Update localistaiton called...");
-  //   static unsigned long lastScanRestart = 0;
-  //   unsigned long now = millis();
-  //   if (now - lastScanRestart > 500) {
-  //     Serial.println("Restarting scan...");
-  //     BLE.stopScan();
-  //     BLE.scan();
-  //     lastScanRestart = now;
-  //     Serial.println("Scan restarted.");
-  //   }
+  } else {
+      //restart the scan every 500ms
+      Serial.println("Update localistaiton called...");
+      static unsigned long lastScanRestart = 0;
+      unsigned long now = millis();
+      if (now - lastScanRestart > 500) {
+        Serial.println("Restarting scan...");
+        BLE.stopScan();
+        BLE.scan();
+        lastScanRestart = now;
+        Serial.println("Scan restarted.");
+      }
 
-  //   Serial.println("Parse scanned devices");
-  //   BLEDevice dev = BLE.available();
-  //   if (dev) {
-  //     String name = dev.localName();
-  //     for (int i = 0; i < NUM_BEACONS; i++) {
-  //       if (name == BEACON_NAMES[i]) {
-  //         insertRSSI(i, dev.rssi());
-  //         lastUpdatedTimes[i] = now;
-  //         break;
-  //       }
-  //     }
-  //   }
+      //Serial.println("Parse scanned devices");
+      BLEDevice dev = BLE.available();
+      if (dev) {
+        String name = dev.localName();
+        for (int i = 0; i < NUM_BEACONS; i++) {
+          if (name == BEACON_NAMES[i]) {
+            insertRSSI(i, dev.rssi());
+            lastUpdatedTimes[i] = now;
+            break;
+          }
+      }
+    }
+  }
+
+
   // Check if we have enough valid RSSI for all beacons
   bool ready = true;
   for (int i = 0; i < NUM_BEACONS; i++)
   {
     if ((buffersFilled[i] ? windowSize : rssiIndexes[i]) == 0)
     {
-      Serial.print("Not enough RSSI data for ");
-      Serial.print(BEACON_NAMES[i]);
-      Serial.println(", skipping...");
+      // Serial.print("Not enough RSSI data for ");
+      // Serial.print(BEACON_NAMES[i]);
+      // Serial.println(", skipping...");
       ready = false;
       break;
     }
