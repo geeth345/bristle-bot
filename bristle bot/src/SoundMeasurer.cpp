@@ -1,18 +1,21 @@
 #include <SoundMeasurer.h>
 #include <Arduino.h>
 #include <mic.h>
+#include <Communication.h>
+#include <Locomotion.h>
 
 // roughly based on the example from the Seeed studio mic library
 
 // settings for nrf52840
 #define DEBUG 0                   // no debugging "pin pulse during isr" idk what that means
 #define SAMPLES 800               // Number of samples to caputure
+#define SAMPLE_MILLIS 2000        // How often to sample
 
 // config
 mic_config_t mic_config
 {
     .channel_cnt = 1,
-    .sampling_rate = 16000,
+    .sampling_rate = 16000, // sampling rate can only be 16000 or 41667
     .buf_size = 1600,
     .debug_pin = LED_BUILTIN
 };
@@ -63,15 +66,34 @@ void setupSoundLevel()
 
 void updateSoundLevel()
 {   
-    Serial.println("Resuming recording");
+
+    static unsigned long lastSample = 0;
+    if (millis() - lastSample < SAMPLE_MILLIS)
+    {
+        return;
+    }
+    lastSample = millis();
+
+    Serial.println("Resuming Recording, pausing motors ");
+    Locomotion::stopMotors();
+    delay(200); // wait for motors to stop
     Mic.resume();
 
     // Wait until recording is ready
+    unsigned long startTime = millis();
     while (!record_ready) {
-        delay(20);
+      if (millis() - startTime > 500) {
+          Serial.println("Measurement timed out");
+          recording = 0;
+            Mic.pause();
+            return;
+        }
+        delay(1);
     }
+
     Mic.pause();
-    Serial.println("Done recording");
+    Serial.println("Done recording, resuming motors ");
+    Locomotion::resumeMotors();
 
     //Serial.println("Finished sampling");
     
@@ -81,14 +103,16 @@ void updateSoundLevel()
     // }
 
     // average the samples
-    int16_t sum = 0;
+    int32_t sum = 0;
     for (int i = 0; i < SAMPLES; i++) {
-        sum += abs(recording_buf[i]);
+        sum += abs(recording_buf[i]); // amplitude
     }
-    int16_t average = sum / SAMPLES;
+    uint8_t average = constrain(sum / SAMPLES, 0, 255);
     Serial.print("Sound Average: ");
     Serial.println(average);
 
+    // update the sound level
+    Comms::update_sound(average);
 
     
     // Reset flag

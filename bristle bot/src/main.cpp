@@ -39,6 +39,9 @@ void setup()
   BLEManager::setupBLE();
   initialiseLocalisation();
 
+  // Initialise locomotion
+  Locomotion::initialiseLocomotion();
+
   // initialise sound level
   setupSoundLevel();
 
@@ -67,6 +70,6 @@ void loop()
   updateSoundLevel();
 
   // ############ Locomotion #############
-  updateLocomotion();
+  Locomotion::updateLocomotion();
 }
 
