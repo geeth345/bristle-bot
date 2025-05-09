@@ -1,0 +1,14 @@
+# Terminal 1: FastAPI Server
+.venv\Scripts\activate
+cd API
+uvicorn main:app --reload
+
+# Terminal 2: Node
+.venv\Scripts\activate
+cd mock-server
+node server.js
+
+# Terminal 3: React
+.venv\Scripts\activate
+cd frontend
+npm start

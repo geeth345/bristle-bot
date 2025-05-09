@@ -1,0 +1,59 @@
+/* styles/SwarmOverview.css */
+
+.swarm-overview {
+    background-color: #1f1f1f;
+    border-radius: 4px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  
+  .swarm-overview h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    color: #0dcaf0;
+    border-bottom: 1px solid #333333;
+    padding-bottom: 0.5rem;
+  }
+  
+  .swarm-overview__stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.8rem;
+  }
+  
+  .swarm-overview__stat {
+    background-color: #262626;
+    padding: 0.8rem;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .swarm-overview__label {
+    font-size: 0.8rem;
+    color: #aaaaaa;
+    margin-bottom: 0.3rem;
+  }
+  
+  .swarm-overview__value {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+  
+  .swarm-overview__status--connected {
+    color: #4caf50;
+  }
+  
+  .swarm-overview__status--connecting {
+    color: #ff9800;
+  }
+  
+  .swarm-overview__status--disconnected {
+    color: #f44336;
+  }
+  
+  .swarm-overview__status--closing {
+    color: #9e9e9e;
+  }
+  
