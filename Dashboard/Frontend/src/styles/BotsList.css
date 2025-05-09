@@ -1,0 +1,52 @@
+/* styles/BotsList.css */
+
+.bots-list {
+    background-color: #1f1f1f;
+    border-radius: 4px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  
+  .bots-list h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    color: #0dcaf0;
+    border-bottom: 1px solid #333333;
+    padding-bottom: 0.5rem;
+  }
+  
+  .bots-list__grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    /* Optimize scrolling performance */
+    will-change: transform;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Hide scrollbar for cleaner look */
+  .bots-list__grid::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .bots-list__grid::-webkit-scrollbar-track {
+    background: #1a1a1a;
+  }
+  
+  .bots-list__grid::-webkit-scrollbar-thumb {
+    background-color: #444444;
+    border-radius: 3px;
+  }
+  
+  .bots-list__empty {
+    padding: 1rem;
+    text-align: center;
+    color: #888888;
+    font-style: italic;
+    background-color: #262626;
+    border-radius: 4px;
+  }
+  

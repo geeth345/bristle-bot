@@ -1,0 +1,100 @@
+/* styles/App.css */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #121212;
+  color: #ffffff;
+  font-family: 'Roboto', Arial, sans-serif;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background-color: #1e1e1e;
+  border-bottom: 1px solid #333333;
+  height: 60px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.app-header h1 {
+  margin: 0;
+  color: #0dcaf0;
+  font-size: 1.5rem;
+  letter-spacing: 0.5px;
+}
+
+.system-date {
+  font-size: 0.85rem;
+  color: #aaaaaa;
+}
+
+.app-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.app-map-container {
+  flex: 1;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+.app-sidebar {
+  width: 350px;
+  padding: 1rem;
+  background-color: #1a1a1a;
+  border-left: 1px solid #333333;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Error fallback for ErrorBoundary */
+.error-fallback {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #121212;
+  color: #ffffff;
+  text-align: center;
+  padding: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .app-content {
+    flex-direction: column;
+  }
+  
+  .app-sidebar {
+    width: auto;
+    border-left: none;
+    border-top: 1px solid #333333;
+  }
+}
+
+/* Optimizations for Raspberry Pi */
+@media (max-width: 800px) {
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    height: auto;
+    padding: 0.5rem;
+  }
+  
+  .app-header h1 {
+    font-size: 1.2rem;
+    margin-bottom: 0.3rem;
+  }
+  
+  .system-date {
+    font-size: 0.75rem;
+  }
+}

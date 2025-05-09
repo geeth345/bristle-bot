@@ -1,0 +1,142 @@
+/* styles/ControlPanel.css */
+
+.control-panel {
+    background-color: #1f1f1f;
+    border-radius: 4px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  
+  .control-panel h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    color: #0dcaf0;
+    border-bottom: 1px solid #333333;
+    padding-bottom: 0.5rem;
+  }
+  
+  .control-panel__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .control-panel__action-group {
+    background-color: #262626;
+    padding: 0.8rem;
+    border-radius: 4px;
+  }
+  
+  .control-panel__action-group h3 {
+    margin-top: 0;
+    margin-bottom: 0.8rem;
+    font-size: 1rem;
+    color: #ffffff;
+  }
+  
+  .control-panel__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .control-panel__button {
+    background-color: #333333;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .control-panel__button:hover:not(:disabled) {
+    background-color: #444444;
+  }
+  
+  .control-panel__button:active:not(:disabled) {
+    background-color: #555555;
+  }
+  
+  .control-panel__button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .control-panel__button--primary {
+    background-color: #0dcaf0;
+    color: #000000;
+  }
+  
+  .control-panel__button--primary:hover:not(:disabled) {
+    background-color: #0ab2d0;
+  }
+  
+  .control-panel__button--secondary {
+    background-color: #6c757d;
+  }
+  
+  .control-panel__button--secondary:hover:not(:disabled) {
+    background-color: #5a6268;
+  }
+  
+  .control-panel__button--warning {
+    background-color: #dc3545;
+  }
+  
+  .control-panel__button--warning:hover:not(:disabled) {
+    background-color: #c82333;
+  }
+  
+  .control-panel__command-form {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .control-panel__input {
+    flex: 1;
+    background-color: #1a1a1a;
+    color: #ffffff;
+    border: 1px solid #444444;
+    border-radius: 4px;
+    padding: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .control-panel__input:focus {
+    outline: none;
+    border-color: #0dcaf0;
+  }
+  
+  .control-panel__input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .control-panel__feedback {
+    margin-top: 1rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    background-color: #2a3b47;
+    color: #0dcaf0;
+    font-size: 0.9rem;
+    animation: fade-in 0.3s;
+  }
+  
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .control-panel__footer {
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #333333;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #888888;
+  }
+  
