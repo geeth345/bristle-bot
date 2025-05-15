@@ -48,7 +48,6 @@ namespace Comms
     void advertiseBLE()
     {
         Serial.println("Advertising BLE...");
-        pos_x++;
 
         // Create a custom advertisement packet
 

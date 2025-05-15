@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <ArduinoBLE.h>
+#include <Communication.h>
 
 // ####### Constants and Variables #######
 const bool CALLBACK_SCANNING_MODE = true; // true = scan with the callback, false = scan with BLE.available()
@@ -10,6 +11,11 @@ const float BEACON_POSITIONS[3][2] = {
     {0.0, 1.0},   // Beacon1
     {-0.75, 0.0}, // Beacon2
     {0.75, 0.0}   // Beacon3
+};
+
+const float POSITION_RANGE[2][2] = {
+    {-2.0, 2.0}, // X range
+    {-2.0, 2.0}  // Y range
 };
 
 // RSSI calibration parameters
@@ -118,6 +124,17 @@ void deviceDiscoveredCallback(BLEDevice peripheral)
   }
 }
 
+void sendPosition(float x, float y)
+{
+  // first convert the position to a value between 0 and 255
+  uint8_t x_pos = map(x, POSITION_RANGE[0][0], POSITION_RANGE[0][1], 0, 255);
+  uint8_t y_pos = map(y, POSITION_RANGE[1][0], POSITION_RANGE[1][1], 0, 255);
+
+  // send the position to the communication module
+  Comms::update_position(x_pos, y_pos);
+
+}
+
 void initialiseLocalisation()
 {
 
@@ -175,46 +192,51 @@ void updateLocalisation()
       break;
     }
   }
-  if (ready)
+  if (!ready)
   {
-    Serial.println("Enough valid RSSI, calculating position...");
-    // onvert RSSI to distance
-    float rssi[3], d[3];
-    for (int i = 0; i < 3; i++)
-    {
-      rssi[i] = avgRSSI(i);
-      d[i] = pow(10.0, (RSSI_AT_1M - rssi[i]) / (10 * PATH_LOSS_EXPONENT));
-    }
-
-    // Trilateration + residual
-    float x, y, residual;
-    trilateration(d, x, y, residual);
-
-    // Confidence estimation
-    float maxResidual = 1.5;
-    float confidence = max(0.0, min(1.0, 1.0 - residual / maxResidual));
-
-    // Smoothing
-    if (isnan(smoothedX) || isnan(smoothedY))
-    {
-      smoothedX = x;
-      smoothedY = y;
-    }
-    else
-    {
-      smoothedX = ALPHA * x + (1 - ALPHA) * smoothedX;
-      smoothedY = ALPHA * y + (1 - ALPHA) * smoothedY;
-    }
-
-    // Output only if confidence is sufficient
-    if (confidence >= 0.5)
-    {
-      Serial.print("Position: (");
-      Serial.print(smoothedX, 2);
-      Serial.print(", ");
-      Serial.print(smoothedY, 2);
-      Serial.print(") | Confidence: ");
-      Serial.println(int(confidence * 100));
-    }
+    return;
   }
+
+  Serial.println("Enough valid RSSI, calculating position...");
+  // onvert RSSI to distance
+  float rssi[3], d[3];
+  for (int i = 0; i < 3; i++)
+  {
+    rssi[i] = avgRSSI(i);
+    d[i] = pow(10.0, (RSSI_AT_1M - rssi[i]) / (10 * PATH_LOSS_EXPONENT));
+  }
+
+  // Trilateration + residual
+  float x, y, residual;
+  trilateration(d, x, y, residual);
+
+  // Confidence estimation
+  float maxResidual = 1.5;
+  float confidence = max(0.0, min(1.0, 1.0 - residual / maxResidual));
+
+  // Smoothing
+  if (isnan(smoothedX) || isnan(smoothedY))
+  {
+    smoothedX = x;
+    smoothedY = y;
+  }
+  else
+  {
+    smoothedX = ALPHA * x + (1 - ALPHA) * smoothedX;
+    smoothedY = ALPHA * y + (1 - ALPHA) * smoothedY;
+  }
+
+  // Output only if confidence is sufficient
+  if (confidence >= 0.5)
+  {
+    Serial.print("Position: (");
+    Serial.print(smoothedX, 2);
+    Serial.print(", ");
+    Serial.print(smoothedY, 2);
+    Serial.print(") | Confidence: ");
+    Serial.println(int(confidence * 100));
+  }
+
+  sendPosition(smoothedX, smoothedY);
+
 }
