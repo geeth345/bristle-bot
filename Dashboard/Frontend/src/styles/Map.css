@@ -49,4 +49,25 @@
       opacity: 0.6;
     }
   }
+
+.heatmap-overlay {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.time-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(0,0,0,0.7);
+  padding: 10px;
+  border-radius: 5px;
+  color: white;
+}
+
+.time-controls input[type="range"] {
+  vertical-align: middle;
+}
+
   

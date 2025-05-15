@@ -1,20 +1,27 @@
-// components/ControlPanel.js 
-import React, { useState, useCallback } from 'react'; 
-import { useSwarm } from '../context/SwarmContext'; 
-import useWebSocketOptimized, { ReadyState } from '../hooks/useWebSocketOptimized'; 
-import usePreventMemoryLeaks from '../hooks/usePreventMemoryLeaks'; 
+// components/ControlPanel.js
+import React, { useState, useCallback } from 'react';
+import { useSwarm } from '../context/SwarmContext';
+import useWebSocketOptimized, { ReadyState } from '../hooks/useWebSocketOptimized';
+import usePreventMemoryLeaks from '../hooks/usePreventMemoryLeaks';
 import '../styles/ControlPanel.css';
 
+/**
+ * ControlPanel component provides user controls for the swarm system
+ * Includes commands for bot control and system settings
+ * 
+ * @returns {JSX.Element} Control panel component
+ */
 const ControlPanel = () => {
   const { bots, selectedBot, connectionStatus } = useSwarm();
   const [command, setCommand] = useState('');
+  const [feedback, setFeedback] = useState('');
   const { isMounted, setManagedTimeout, clearManagedTimeout } = usePreventMemoryLeaks();
   const [feedbackTimer, setFeedbackTimer] = useState(null);
-
-  const { sendJsonMessage, readyState } = useWebSocketOptimized(
-    `ws://localhost:8000/ws/command?clientId=${localStorage.getItem('clientId') || 'control'}`,
-    { debugMode: false }
-  );
+  
+  // Initialize WebSocket connection for commands
+  const { sendJsonMessage, readyState } = useWebSocketOptimized('ws://localhost:8000/ws/swarm', {
+    debugMode: false,
+  });
   
   /**
    * Display feedback message with auto-clear after delay

@@ -3,12 +3,15 @@
 cd API
 uvicorn main:app --reload
 
-# Terminal 2: Node
+# Terminal 2: React
+.venv\Scripts\activate
+cd frontend
+npm start
+
+# Terminal 3: Node
 .venv\Scripts\activate
 cd mock-server
 node server.js
 
-# Terminal 3: React
-.venv\Scripts\activate
-cd frontend
-npm start
+
+

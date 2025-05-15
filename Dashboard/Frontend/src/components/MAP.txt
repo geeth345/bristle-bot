@@ -4,25 +4,37 @@ import PropTypes from 'prop-types';
 import { useSwarm } from '../context/SwarmContext';
 import '../styles/Map.css';
 
+/**
+ * Map visualization component for sound localization system
+ * Uses Canvas for optimal rendering performance on Raspberry Pi
+ *
+ * @param {Object} props - Component props
+ * @returns {JSX.Element} Map component
+ */
 const Map = ({ width = 800, height = 600, gridSize = 50 }) => {
   const canvasRef = useRef(null);
   const animationFrameRef = useRef(null);
   const trailCanvasRef = useRef(null);
-  const [timeWindow, setTimeWindow] = useState(60);
+  const [timeWindow, setTimeWindow] = useState(60); // Default 60-second window
   
   const { bots, beacons, target, connectionStatus, heatmapData, trajectories } = useSwarm();
 
-  // Heatmap implementation
+  // Heatmap drawing implementation using canvas gradients
   const drawHeatmap = useCallback((ctx, data) => {
     if (!data || data.length === 0) return;
     
+    // Save context state
     ctx.save();
+    
+    // Set blend mode for better color mixing
     ctx.globalCompositeOperation = 'screen';
     
+    // Draw each intensity point with radial gradient
     data.forEach(point => {
       const radius = point.radius || 40;
       const intensity = point.intensity || point.value || 1;
       
+      // Create radial gradient for smooth falloff
       const gradient = ctx.createRadialGradient(
         point.x, point.y, 0,
         point.x, point.y, radius
@@ -30,27 +42,31 @@ const Map = ({ width = 800, height = 600, gridSize = 50 }) => {
       gradient.addColorStop(0, `rgba(255, 0, 0, ${Math.min(intensity/100, 0.8)})`);
       gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
       
+      // Draw gradient circle
       ctx.beginPath();
       ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
       ctx.fillStyle = gradient;
       ctx.fill();
     });
     
+    // Restore original context state
     ctx.restore();
   }, []);
 
-  // Trajectories with null check
+  // Trajectory drawing with time-based filtering
   const drawTrajectories = useCallback((ctx, mainCtx) => {
     const now = Date.now();
     trailCanvasRef.current.width = mainCtx.canvas.width;
     trailCanvasRef.current.height = mainCtx.canvas.height;
     const trailCtx = trailCanvasRef.current.getContext('2d');
     
+    // Fade effect for old trajectories
     trailCtx.fillStyle = 'rgba(0, 0, 0, 0.05)';
     trailCtx.fillRect(0, 0, trailCanvasRef.current.width, trailCanvasRef.current.height);
 
-    Object.entries(trajectories || {}).forEach(([botId, positions]) => {
-      const validPositions = (positions || []).filter(pos => 
+    // Draw filtered trajectories
+    Object.entries(trajectories).forEach(([botId, positions]) => {
+      const validPositions = positions.filter(pos => 
         pos.timestamp > now - timeWindow * 1000
       );
       
@@ -60,16 +76,22 @@ const Map = ({ width = 800, height = 600, gridSize = 50 }) => {
         trailCtx.lineWidth = 2;
         
         validPositions.forEach((pos, index) => {
-          index === 0 ? trailCtx.moveTo(pos.x, pos.y) : trailCtx.lineTo(pos.x, pos.y);
+          if (index === 0) {
+            trailCtx.moveTo(pos.x, pos.y);
+          } else {
+            trailCtx.lineTo(pos.x, pos.y);
+          }
         });
+        
         trailCtx.stroke();
       }
     });
 
+    // Composite trails onto main canvas
     mainCtx.drawImage(trailCanvasRef.current, 0, 0);
   }, [timeWindow, trajectories]);
 
-  // Target confidence
+  // Enhanced target confidence visualization with gradient
   const drawTargetConfidence = useCallback((ctx, position, confidence) => {
     const gradient = ctx.createRadialGradient(
       position.x, position.y, 0,
@@ -83,6 +105,7 @@ const Map = ({ width = 800, height = 600, gridSize = 50 }) => {
     ctx.fillStyle = gradient;
     ctx.fill();
     
+    // Crosshairs for precise location
     ctx.beginPath();
     ctx.moveTo(position.x - 10, position.y);
     ctx.lineTo(position.x + 10, position.y);
@@ -92,6 +115,7 @@ const Map = ({ width = 800, height = 600, gridSize = 50 }) => {
     ctx.lineWidth = 2;
     ctx.stroke();
     
+    // Coordinates with confidence
     ctx.font = '14px Arial';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
@@ -99,90 +123,118 @@ const Map = ({ width = 800, height = 600, gridSize = 50 }) => {
     ctx.fillText(`Confidence: ${(confidence * 100).toFixed(0)}%`, position.x, position.y - 40);
   }, []);
 
-  // Main draw function
+  /**
+   * Main drawing function - separated from data updates for performance
+   * Uses requestAnimationFrame for smooth animation
+   */
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
+    
+    // Clear canvas with a single operation
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+    
+    // Draw heatmap first (background layer)
     drawHeatmap(ctx, heatmapData);
+    
+    // Draw trajectories on top of heatmap
     drawTrajectories(ctx, ctx);
+    
+    // Draw grid (optimized to reduce context switches)
     drawGrid(ctx, canvas.width, canvas.height, gridSize);
-
-    Object.entries(beacons || {}).forEach(([id, beacon]) => {
+    
+    // Draw beacons
+    Object.entries(beacons).forEach(([id, beacon]) => {
       drawBeacon(ctx, id, beacon.position);
     });
-
-    if (target?.position) {
+    
+    // Draw target if exists
+    if (target && target.position) {
       drawTargetConfidence(ctx, target.position, target.confidence);
     }
-
-    const sortedBots = Object.entries(bots || {}).sort(([, a], [, b]) => {
+    
+    // Draw bots (sorted by status to ensure active bots render on top)
+    const sortedBots = Object.entries(bots).sort(([, a], [, b]) => {
       const statusOrder = { active: 3, searching: 2, returning: 1, inactive: 0 };
       return (statusOrder[b.status] || 0) - (statusOrder[a.status] || 0);
     });
     
     sortedBots.forEach(([id, bot]) => {
-      if (bot?.position) drawBot(ctx, id, bot);
+      if (bot.position) drawBot(ctx, id, bot);
     });
-
+    
+    // Request next frame using RAF for smooth animation
     animationFrameRef.current = requestAnimationFrame(draw);
   }, [bots, beacons, target, gridSize, heatmapData, drawTrajectories, drawTargetConfidence, drawHeatmap]);
 
-  // Initialization useEffect
+  // Initial setup and cleanup
   useEffect(() => {
+    // Set canvas dimensions with device pixel ratio for sharper rendering
     const canvas = canvasRef.current;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     
+    // Scale context to match CSS dimensions
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
-
+    
+    // Setup trail canvas
     const trailCanvas = trailCanvasRef.current;
     trailCanvas.width = width * dpr;
     trailCanvas.height = height * dpr;
     const trailCtx = trailCanvas.getContext('2d');
     trailCtx.scale(dpr, dpr);
-
+    
+    // Start animation loop
     animationFrameRef.current = requestAnimationFrame(draw);
     
+    // Cleanup animation on unmount to prevent memory leaks
     return () => {
-      animationFrameRef.current && cancelAnimationFrame(animationFrameRef.current);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, [width, height, draw]);
 
-  // Helper functions remain unchanged
+  // Rest of the component remains unchanged...
+  // [Previous implementation of drawGrid, drawBeacon, drawBot]
+  // [useEffect setup and other helper functions]
+
+  /** 
+   * Grid drawing function - optimized for fewer context changes
+   * Draws all lines in single path, minimizes style changes
+   */
   const drawGrid = (ctx, width, height, gridSize) => {
     ctx.beginPath();
     ctx.strokeStyle = '#2c2c2c';
     ctx.lineWidth = 1;
-    
+    // Draw all vertical lines in one path
     for (let x = 0; x <= width; x += gridSize) {
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
     }
-    
+    // Draw all horizontal lines in same path
     for (let y = 0; y <= height; y += gridSize) {
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
     }
-    
+    // Single stroke operation for all lines
     ctx.stroke();
-    
+    // Draw coordinates with single style setting
     ctx.fillStyle = '#6c6c6c';
     ctx.font = '12px Arial';
     ctx.textAlign = 'start';
-    
+    // X coordinates
     for (let x = 0; x <= width; x += gridSize) {
-      if (x % (gridSize * 2) === 0) {
+      if (x % (gridSize * 2) === 0) { // Only label every other line for readability
         ctx.fillText((x / gridSize).toString(), x + 5, 15);
       }
     }
-    
+    // Y coordinates
     for (let y = 0; y <= height; y += gridSize) {
       if (y % (gridSize * 2) === 0) {
         ctx.fillText((y / gridSize).toString(), 5, y + 15);
@@ -190,53 +242,59 @@ const Map = ({ width = 800, height = 600, gridSize = 50 }) => {
     }
   };
 
+  /**
+   * Beacon drawing function
+   * Creates visual representation of a fixed sound beacon
+   */
   const drawBeacon = (ctx, id, position) => {
     if (!position) return;
     const { x, y } = position;
-    
+    // Draw beacon with glow effect for visibility
+    ctx.beginPath();
     const gradient = ctx.createRadialGradient(x, y, 2, x, y, 15);
     gradient.addColorStop(0, '#4287f5');
     gradient.addColorStop(1, 'rgba(66, 135, 245, 0)');
-    
-    ctx.beginPath();
-    ctx.arc(x, y, 15, 0, 2 * Math.PI);
     ctx.fillStyle = gradient;
+    ctx.arc(x, y, 15, 0, 2 * Math.PI);
     ctx.fill();
-    
+    // Draw beacon core
     ctx.beginPath();
     ctx.arc(x, y, 6, 0, 2 * Math.PI);
     ctx.fillStyle = '#85b3ff';
     ctx.fill();
-    
+    // Draw label
     ctx.font = '14px Arial';
     ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
     ctx.fillText(`Beacon ${id}`, x, y - 15);
   };
 
+  /**
+   * Bot drawing function with visual indicators
+   * Creates visual representation of a mobile bot with status and battery
+   */
   const drawBot = (ctx, id, bot) => {
     const { position, battery = 100, status = 'inactive' } = bot;
     if (!position) return;
     const { x, y } = position;
-    
+    // Determine color based on status
     const statusColors = {
-      active: '#4caf50',
-      searching: '#ff9800',
-      returning: '#2196f3',
-      inactive: '#9e9e9e',
+      active: '#4caf50', // Green
+      searching: '#ff9800', // Orange
+      returning: '#2196f3', // Blue
+      inactive: '#9e9e9e', // Grey
     };
-    
-    const color = statusColors[status] || '#f44336';
-    
+    const color = statusColors[status] || '#f44336'; // Red fallback
+    // Draw directional bot shape
     ctx.save();
     ctx.translate(x, y);
-    
+    // Add subtle animation based on status
     if (status === 'searching') {
       const time = Date.now() / 1000;
       const scale = 1 + Math.sin(time * 5) * 0.05;
       ctx.scale(scale, scale);
     }
-    
+    // Bot body
     ctx.beginPath();
     ctx.moveTo(0, -12);
     ctx.lineTo(10, 8);
@@ -244,24 +302,27 @@ const Map = ({ width = 800, height = 600, gridSize = 50 }) => {
     ctx.closePath();
     ctx.fillStyle = color;
     ctx.fill();
-    
+    // Bot outline for better visibility
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
     ctx.stroke();
-    
+    // Battery indicator background
     ctx.beginPath();
     ctx.rect(-15, 12, 30, 5);
     ctx.fillStyle = '#333333';
     ctx.fill();
-    
+    // Battery level fill
     const batteryWidth = Math.max(0, Math.min(30 * (battery / 100), 30));
     if (batteryWidth > 0) {
       ctx.beginPath();
       ctx.rect(-15, 12, batteryWidth, 5);
-      ctx.fillStyle = battery > 70 ? '#4caf50' : battery > 30 ? '#ff9800' : '#f44336';
+      // Color based on battery level
+      if (battery > 70) ctx.fillStyle = '#4caf50';
+      else if (battery > 30) ctx.fillStyle = '#ff9800';
+      else ctx.fillStyle = '#f44336';
       ctx.fill();
     }
-    
+    // Bot label with contrasting outline for readability
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -270,7 +331,6 @@ const Map = ({ width = 800, height = 600, gridSize = 50 }) => {
     ctx.strokeText(id, 0, -2);
     ctx.fillStyle = '#ffffff';
     ctx.fillText(id, 0, -2);
-    
     ctx.restore();
   };
 
