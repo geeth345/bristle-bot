@@ -54,7 +54,7 @@ async def scan_loop():
         ble_id = device.address
         bot_id = device.address
         #logger.debug(f"Found Device: {{{ble_id}}} {device.metadata} {adv_data}")
-        #logger.debug("{}", adv_data.manufacturer_data)
+        
         #if (adv_data.rssi > -50):
         #    return
         
@@ -73,6 +73,7 @@ async def scan_loop():
         if adv_data.local_name != "BristleBot":
             return
         # logger.warning("Found!")
+        # logger.error("{}", adv_data)
 
         # Decode data into the Bot
         if (bot_id not in bot_registry.keys()):
