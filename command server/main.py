@@ -108,22 +108,30 @@ async def scan_loop():
 
 async def timeout_loop():
     logger.debug("Starting timeout Loop")
+    count_at_0 = 0
     while True:
         now = time.time()
         count = 0
         for bot in bot_registry.values():
             # timeout
             if (bot.last_seen + bot_disconnect_timeout < now):
-                #logger.warning(f"Bot {{{bot.id}}} not seen for more than 5 seconds.")
+                #logger.warning(f"Bot {{{bot.id}}} not seen for more than {bot_disconnect_timeout} seconds.")
                 bot.status["connected"] = False
             else:
                 count += 1
-        logger.info("Known connected devices: {}/{}", count, len(bot_registry))
-        for bot in bot_registry.values():
-            if bot.status["connected"]:
-                logger.info("id: {} last seen: {} battery: {} x: {} y: {} rotation: {} sound: {}", bot.id, bot.last_seen, bot.status["Battery_level"], bot.x_position, bot.y_position, bot.rotation, bot.status["Sound_Level"])
-            else:
-                logger.warning("id: {} last seen: {} battery: {} x: {} y: {} rotation: {} sound: {}", bot.id, bot.last_seen, bot.status["Battery_level"], bot.x_position, bot.y_position, bot.rotation, bot.status["Sound_Level"])
+        if len(bot_registry) > 0:
+            count_at_0 = 0
+            logger.info("Known connected devices: {}/{}", count, len(bot_registry))
+            for bot in bot_registry.values():
+                if bot.status["connected"]:
+                    logger.info("id: {} last seen: {} battery: {} x: {} y: {} rotation: {} sound: {}", bot.id, bot.last_seen, bot.status["Battery_level"], bot.x_position, bot.y_position, bot.rotation, bot.status["Sound_Level"])
+                else:
+                    logger.warning("id: {} last seen: {} battery: {} x: {} y: {} rotation: {} sound: {}", bot.id, bot.last_seen, bot.status["Battery_level"], bot.x_position, bot.y_position, bot.rotation, bot.status["Sound_Level"])
+        else:
+            count_at_0 += 1
+            if (count_at_0 >= 10):
+                 logger.info("No Known Devices")
+                 count_at_0 = 0
         await asyncio.sleep(1)
 
 async def cleanup():
