@@ -26,10 +26,17 @@ class Bot:
         self.name = name
         raw_data = manuf_data[65535]
         self.status["manuf_data"] = raw_data
-        self.x_position = raw_data[0]
-        self.y_position = raw_data[1]
-        self.status["Battery_level"] = raw_data[2]
-        self.status["Sound_Level"] = raw_data[3]
+        dataID = 0
+        self.x_position = raw_data[dataID]
+        dataID += 1
+        self.y_position = raw_data[dataID]
+        dataID += 1
+        self.rotation = raw_data[dataID]
+        dataID += 1
+        self.status["Battery_level"] = raw_data[dataID]
+        dataID += 1
+        self.status["Sound_Level"] = raw_data[dataID]
+        dataID += 1
     
     def refresh_data(self, rssi, manuf_data):
         self.status["connected"] = True
@@ -37,10 +44,17 @@ class Bot:
         self.status["rssi"] = rssi
         raw_data = manuf_data[65535]
         self.status["manuf_data"] = raw_data
-        self.x_position = raw_data[0]
-        self.y_position = raw_data[1]
-        self.status["Battery_level"] = raw_data[2]
-        self.status["Sound_Level"] = raw_data[3]
+        dataID = 0
+        self.x_position = raw_data[dataID]
+        dataID += 1
+        self.y_position = raw_data[dataID]
+        dataID += 1
+        self.rotation = raw_data[dataID]
+        dataID += 1
+        self.status["Battery_level"] = raw_data[dataID]
+        dataID += 1
+        self.status["Sound_Level"] = raw_data[dataID]
+        dataID += 1
     
     def __str__(self):
         return f"{{{self.name}  id:{{{self.id}}} rssi: {{{self.status["rssi"]}}} manuf_data: {{{bytes.hex(self.status["manuf_data"])}}}}}"
@@ -107,9 +121,9 @@ async def timeout_loop():
         logger.info("Known connected devices: {}/{}", count, len(bot_registry))
         for bot in bot_registry.values():
             if bot.status["connected"]:
-                logger.info("id: {} last seen: {} battery: {} x: {} y: {} sound: {}", bot.id, bot.last_seen, bot.status["Battery_level"], bot.x_position, bot.y_position, bot.status["Sound_Level"])
+                logger.info("id: {} last seen: {} battery: {} x: {} y: {} rotation: {} sound: {}", bot.id, bot.last_seen, bot.status["Battery_level"], bot.x_position, bot.y_position, bot.rotation, bot.status["Sound_Level"])
             else:
-                logger.warning("id: {} last seen: {} battery: {} x: {} y: {} sound: {}", bot.id, bot.last_seen, bot.status["Battery_level"], bot.x_position, bot.y_position, bot.status["Sound_Level"])
+                logger.warning("id: {} last seen: {} battery: {} x: {} y: {} rotation: {} sound: {}", bot.id, bot.last_seen, bot.status["Battery_level"], bot.x_position, bot.y_position, bot.rotation, bot.status["Sound_Level"])
         await asyncio.sleep(1)
 
 async def cleanup():
