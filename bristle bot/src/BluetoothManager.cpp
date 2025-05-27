@@ -10,7 +10,7 @@
 namespace BLEManager
 {
 
-    static const uint32_t SWAP_INTERVAL = 500;
+    static const uint32_t SWAP_INTERVAL = 1000;
 
     void setupBLE()
     {
@@ -40,12 +40,16 @@ namespace BLEManager
         {
             Comms::stopAdvertiseBLE();
             Serial.println("Starting scan mode...");
+            digitalWrite(LED_BLUE, LOW);
+            delay(50);
             BLE.scan(false); // Start scanning for devices
             scanning = true;
         }
         else
         {
             BLE.stopScan();
+            digitalWrite(LED_BLUE, HIGH);
+            delay(50);
             updateLocalisation();
             Comms::advertiseBLE();
             scanning = false;

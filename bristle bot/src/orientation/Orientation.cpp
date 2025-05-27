@@ -1,83 +1,111 @@
+#include <orientation/Orientation.h>
+#include "CompassModule.h"
 #include <Wire.h>
-#include "Calibration.h"
-#include "Globals.h"
-#include <QMC5883LCompass.h>
+#include <SparkFunLSM6DS3.h>
+#include <Communication.h>
 
-QMC5883LCompass compass;
+
+// Create the compass module instance
+CompassModule compass;
+
+// Variables for storing sensor data
+float accelX, accelY, accelZ;
+float gyroX, gyroY, gyroZ;
+float heading, tiltCompHeading;
+
+// Flag for continuous heading display
+bool continuousHeading = false;
+
+float lastHeading = 0.0;
+
+float getHeading() {
+  return lastHeading;
+}
 
 void setupOrientation() {
-    // Serial.begin(115200);
-    Wire.begin();
-    compass.init();
-    compass.setSmoothing(5, false);  // 5 samples, advanced filtering OFF
+   
+  // Initialize I2C
+  Wire.begin();
+  
+  // Initialize the compass module
+  compass.begin();
+    
+  Serial.println("\nCommands:");
+  Serial.println("c - Calibrate magnetometer");
+  Serial.println("d - Print current calibration data");
+  Serial.println("h - Show heading");
+  Serial.println("t - Toggle continuous heading display");
 
-    // Load calibration data (placeholder)
-    loadCalibration();
+  // Add a 2 second delay to allow sensors to stabilize
+  delay(2000);
 
-    // Start calibration routine (for testing)
-    // This will require the user to rotate the robot in all directions
-    // 5 seconds
-    calibrateMagnetometer(compass);
+  // calibration phase
+  compass.calibrate();
 
-    // Save calibration data (optional for testing)
-    saveCalibration();
+}
+
+void displayHeading() {
+ 
+  // Get raw heading
+  heading = compass.readHeading();
+  heading += 90;
+
+  Comms::update_heading(map(heading, 0, 360, 0, 255));
+  lastHeading = heading;
+  
+  // Get tilt-compensated heading
+  //tiltCompHeading = compass.readTiltCompensatedHeading(accelX, accelY, accelZ);
+  
+  // Get direction string
+  String direction = compass.getDirection(heading);
+  
+  // Display both raw and tilt-compensated headings
+  Serial.print("Raw Heading: ");
+  Serial.print(heading, 1);
+  Serial.print("° | Direction: ");
+  Serial.println(direction);
+
 }
 
 void updateOrientation() {
-
-    // Read raw magnetometer data
-    compass.read();
-
-
-    float mx = compass.getX();
-    float my = compass.getY();
-    float mz = compass.getZ();
-    float azimuth = compass.getAzimuth();
-
-    byte a = compass.getAzimuth();
-
-    char myArray[3];
-    compass.getDirection(myArray, a);
-    
-    Serial.print(myArray[0]);
-    Serial.print(myArray[1]);
-    Serial.print(myArray[2]);
-    Serial.println();
-
-    // Apply calibration
-    applyMagnetometerCalibration(mx, my, mz);
-
-    // Output calibrated magnetometer data
-    //Serial.print("Mag X: "); Serial.print(mx);
-    //Serial.print(" | Mag Y: "); Serial.print(my);
-    //Serial.print(" | Mag Z: "); Serial.println(mz);
-
-    // Calculate heading in degrees
-    // float heading = atan2(abs(my), abs(mx)) * (180/PI);
-
-    // // South West
-    // if ( mx>=0 && my>=0)
-    //   heading = 270 - heading;
-    // // North West
-    // if ( mx>=0 && my<0)
-    //   heading = 270 - heading;
-    // // South East
-    // if ( mx<0 && my>=0)
-    //   heading += 90;
-    // // North East
-    // if ( mx<0 && my<0)
-    //   heading = 90 - heading;
-
-    // // Normalise to 0-360 degrees
-    // if(heading<0)
-    //   heading += 360;
-    
-    // if (heading >= 360)
-    //   heading -= 360;
-
-    // Serial.print("Heading: ");
-    // Serial.print(heading);
-    // Serial.println("°");
-
-    // delay(500);
+  displayHeading();
 }
+
+  // Check for commands from Serial
+  // if (Serial.available()) {
+  //   char cmd = Serial.read();
+
+
+    
+    // switch (cmd) {
+    //   case 'c':
+    //     compass.calibrate();
+    //     break;
+        
+    //   case 'd':
+    //     compass.printCalibrationData();
+    //     break;
+        
+    //   case 'h':
+    //     displayHeading();
+    //     break;
+        
+    //   case 't':
+    //     continuousHeading = !continuousHeading;
+    //     if (continuousHeading) {
+    //       Serial.println("Continuous heading display ON");
+    //     } else {
+    //       Serial.println("Continuous heading display OFF");
+    //     }
+    //     break;
+    // }
+
+  
+  // // Display heading continuously if enabled
+  // if (continuousHeading) {
+  //   displayHeading();
+  //   delay(200); // Update 5 times per second
+  // }
+
+
+

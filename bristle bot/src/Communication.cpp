@@ -10,6 +10,7 @@ namespace Comms
 
     static uint8_t pos_x;
     static uint8_t pos_y;
+    static uint8_t heading;
     static uint8_t battery_level;
     static uint8_t sound_level;
 
@@ -17,13 +18,14 @@ namespace Comms
 
     std::vector<uint8_t> create_manuf_data_packet()
     {
-        std::vector<uint8_t> out = std::vector<uint8_t>(6);
+        std::vector<uint8_t> out = std::vector<uint8_t>(7);
         out[0] = 0xFF;
         out[1] = 0xFF;
         out[2] = pos_x;
         out[3] = pos_y;
-        out[4] = battery_level;
-        out[5] = sound_level;
+        out[4] = heading;
+        out[5] = battery_level;
+        out[6] = sound_level;
         return out;
     }
 
@@ -41,6 +43,7 @@ namespace Comms
 
         pos_x = 0;
         pos_y = 0;
+        heading = 0;
         battery_level = 255;
         sound_level = 0;
     }
@@ -64,6 +67,11 @@ namespace Comms
     {
         pos_x = x;
         pos_y = y;
+    }
+
+    void update_heading(uint8_t h)
+    {
+        heading = h;
     }
 
     void update_battery_level(uint8_t level)

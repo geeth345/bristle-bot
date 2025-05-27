@@ -1,5 +1,7 @@
 #include "Locomotion.h"
 #include <Arduino.h>
+#include <orientation/Orientation.h>
+#include <cmath>
 
 namespace Locomotion
 {
@@ -20,6 +22,9 @@ namespace Locomotion
   static bool leftState = false;
   static bool rightState = false;
 
+  float initialHeading = 0.0; // variable to store the heading
+  float threshold = 5;
+
   void initialiseLocomotion()
   {
     pinMode(motorRight, OUTPUT);
@@ -36,6 +41,8 @@ namespace Locomotion
     digitalWrite(motorLeft, HIGH);
     delay(1000);
     digitalWrite(motorLeft, LOW);
+    // update heading
+    initialHeading = getHeading();
   }
 
   void updateLocomotion()
@@ -46,6 +53,17 @@ namespace Locomotion
     { // loop around timer until random interval met.
       previousMillis = currentMillis;
       levyWalk(); // perform levy walk
+    }
+  }
+
+  void updateLocomotionWalkStraight()
+  {
+    unsigned long currentMillis = millis(); // update timer
+
+    if (currentMillis - previousMillis >= interval)
+    { // loop around timer until random interval met.
+      previousMillis = currentMillis;
+      walkStraight(getHeading());
     }
   }
 
@@ -68,11 +86,24 @@ namespace Locomotion
   //   }
   // }
 
+  void walkStraight(float currentHeading) 
+  {
+    float headingDifference = fmod(180 + currentHeading - initialHeading, 360) - 180;
+    if (headingDifference > threshold) {
+      turnLeft();
+      delay(500);
+    } else if (headingDifference < -threshold) {
+      turnRight();
+      delay(500);
+    }
+    moveForward();
+  }
+
   void levyWalk()
   {
     int r = random(100); // probabilities for each to happen, i.e 60% to go forwards, 20%ea to turn left/right
 
-    if (r < 60)
+    if (r < 101)
     { // biased to forwards walk
       moveForward();
       interval = powerLawRandomInterval(minWalkTime, maxWalkTime, 1.5); // mu value 1.5 is typical for Lévy walk
