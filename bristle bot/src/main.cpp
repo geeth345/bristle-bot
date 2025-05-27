@@ -80,6 +80,9 @@ void setup()
   // initialise sound level
   setupSoundLevel();
 
+
+  // select the mode 
+  pinMode(modeSelectPin, INPUT_PULLUP);
   if (digitalRead(modeSelectPin)) 
   {
     behaviourMode = 1;
